@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -ex
+
+# https://raymii.org/s/tutorials/OpenSSL_command_line_Root_and_Intermediate_CA_including_OCSP_CRL%20and_revocation.html
+
+# under rootca directory
+# config root ca
+if [[ ! -e "rootca.key" ]]; then
+  openssl genrsa -aes256 -passout pass:changeit -out rootca.key 8192
+fi
+openssl req -sha256 -new -x509 -days 1826 -key rootca.key -out rootca.crt -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=Root CA' -passin pass:changeit
+rm -f certindex* certserial* crlnumber*
+touch certindex
+echo 1000 > certserial
+echo 1000 > crlnumber
+
+# gen intermediate ca
+if [[ ! -e "intermediate.key" ]]; then
+  openssl genrsa -aes256 -passout pass:changeit -out intermediate.key 8192
+fi
+openssl req -sha256 -new -key intermediate.key -out intermediate.csr -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=Intermediate CA' -passin pass:changeit
+openssl ca -batch -config ca.conf -notext -in intermediate.csr -out intermediate.crt -passin pass:changeit
+
+# gen empty crl for root ca
+openssl ca -config ca.conf -gencrl -keyfile rootca.key -cert rootca.crt -out rootca.crl.pem -passin pass:changeit
+openssl crl -inform PEM -in rootca.crl.pem -outform DER -out rootca.crl
+
+# under intermediate directory
+# config intermediate ca
+pushd ../intermediate
+cp ../rootca/intermediate.key .
+cp ../rootca/intermediate.crt .
+rm -f certindex* certserial* crlnumber*
+touch certindex
+echo 1000 > certserial
+echo 1000 > crlnumber
+
+# gen empty crl for intermediate ca
+openssl ca -config ca.conf -gencrl -keyfile intermediate.key -cert intermediate.crt -out intermediate.crl.pem -passin pass:changeit
+openssl crl -inform PEM -in intermediate.crl.pem -outform DER -out intermediate.crl
+
+if [[ ! -e "client.key" ]]; then
+  openssl genrsa -aes256 -passout pass:changeit -out client.key 4096
+fi
+openssl req -new -sha256 -key client.key -out client.csr -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=client' -passin pass:changeit
+openssl ca -batch -config ca.conf -notext -in client.csr -out client.crt  -passin pass:changeit
+
+if [[ ! -e "client2.key" ]]; then
+  openssl genrsa -aes256 -passout pass:changeit -out client2.key 4096
+fi
+openssl req -new -sha256 -key client2.key -out client2.csr -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=client2' -passin pass:changeit
+openssl ca -batch -config ca.conf -notext -in client2.csr -out client2.crt  -passin pass:changeit
+
+if [[ ! -e "server.key" ]]; then
+  openssl genrsa -aes256 -passout pass:changeit -out server.key 4096
+fi
+openssl req -new -sha256 -key server.key -out server.csr -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=server' -passin pass:changeit
+openssl ca -batch -config ca.conf -notext -in server.csr -out server.crt  -passin pass:changeit
+
+cat ../rootca/rootca.crt intermediate.crt > chain.crt
+
+# verify certs
+openssl verify -CAfile chain.crt server.crt
+openssl verify -CAfile chain.crt client.crt
+openssl verify -CAfile chain.crt client2.crt
+cat ../rootca/rootca.crt intermediate.crt intermediate.crl.pem > crl-chain.crt
+openssl verify -crl_check -CAfile crl-chain.crt server.crt
+openssl verify -crl_check -CAfile crl-chain.crt client.crt
+openssl verify -crl_check -CAfile crl-chain.crt client2.crt
+
+# revoke client2
+openssl ca -config ca.conf -revoke client2.crt -keyfile intermediate.key -cert intermediate.crt -passin pass:changeit
+openssl ca -config ca.conf -gencrl -keyfile intermediate.key -cert intermediate.crt -out intermediate.crl.pem -passin pass:changeit
+openssl crl -inform PEM -in intermediate.crl.pem -outform DER -out intermediate.crl
+cat ../rootca/rootca.crt intermediate.crt intermediate.crl.pem > crl-chain.crt
+openssl verify -CAfile chain.crt client2.crt
+openssl verify -crl_check -CAfile crl-chain.crt client2.crt || true
+
+# under client-server directory
+# copy server & client certs and keys here
+pushd ../client-server
+cp ../intermediate/server.key .
+cp ../intermediate/server.crt .
+cp ../intermediate/client.key .
+cp ../intermediate/client.crt .
+cp ../intermediate/client2.key .
+cp ../intermediate/client2.crt .
+cp ../intermediate/chain.crt .
+
+# gen keystores
+openssl pkcs12 -export -out client-keystore.p12 -inkey client.key -in client.crt -certfile chain.crt -passin pass:changeit -passout pass:changeit
+openssl pkcs12 -export -out client2-keystore.p12 -inkey client2.key -in client2.crt -certfile chain.crt -passin pass:changeit -passout pass:changeit
+openssl pkcs12 -export -out server-keystore.p12 -inkey server.key -in server.crt -certfile chain.crt -passin pass:changeit -passout pass:changeit
+# openssl pkcs12 -export -out truststore.p12 -nokeys -in ../rootca/rootca.crt -passin pass:changeit -passout pass:changeit
+rm truststore.p12
+keytool -importcert -alias ca -file ../rootca/rootca.crt -keystore truststore.p12 -storepass:file changeit -noprompt
+
+cp truststore.p12 ../../client/src/main/resources
+cp client-keystore.p12 ../../client/src/main/resources
+cp client2-keystore.p12 ../../client/src/main/resources
+cp truststore.p12 ../../server/src/main/resources
+cp server-keystore.p12 ../../server/src/main/resources

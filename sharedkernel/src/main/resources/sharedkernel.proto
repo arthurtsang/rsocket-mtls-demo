@@ -1,0 +1,8 @@
+syntax = "proto3";
+package example;
+option java_package = "org.example";
+option java_outer_classname = "SharedKernel";
+
+message Location {
+  string location = 1;
+}

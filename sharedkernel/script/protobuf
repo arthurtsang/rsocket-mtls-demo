@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -ex
+
+pushd ../src/main
+~/Downloads/protoc-3.20.0-osx-x86_64/bin/protoc --java_out=java --proto_path=./resources ./resources/sharedkernel.proto

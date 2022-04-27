@@ -1,0 +1,41 @@
+logging:
+  level:
+    root: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: client1
+server:
+  port: 7001
+rsocket:
+  remote:
+    port: 3000
+    host: localhost
+  ssl:
+    server:
+      trustStoreFileName: truststore.p12
+      trustStorePassword: changeit
+    client:
+      keyStoreFileName: client-keystore.p12
+      keyStorePassword: changeit
+
+---
+spring:
+  config:
+    activate:
+      on-profile: client2
+server:
+  port: 7002
+rsocket:
+  remote:
+    port: 3000
+    host: localhost
+  ssl:
+    server:
+      trustStoreFileName: truststore.p12
+      trustStorePassword: changeit
+    client:
+      keyStoreFileName: client2-keystore.p12
+      keyStorePassword: changeit

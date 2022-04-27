@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -ex
+
+# generate root CA key and cert
+openssl req -x509 -sha256 -days 3650 -newkey rsa:2048 -keyout rootCA.key -out rootCA.crt -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=Root CA' -passout pass:changeit
+
+# generate client cert
+
+# generate key
+openssl genrsa -out client.key -des3 -passout pass:changeit 2048
+# create CSR (with manual inputs)
+openssl req -new -key client.key -out client.csr -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=client' -passin pass:changeit
+# openssl rsa -in client.key -out client.decrypted.key
+# generate a cert with the key signed it with root ca
+openssl x509 -req -in client.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -days 3650 -sha256 -extfile client.ext -out client.crt -passin pass:changeit
+# generate the client keystore
+openssl pkcs12 -export -out client-keystore.p12 -inkey client.key -in client.crt -certfile rootCA.crt -passin pass:changeit -passout pass:changeit
+
+# generate server cert
+openssl genrsa -out server.key -des3 -passout pass:changeit 2048
+openssl req -new -key server.key -out server.csr -subj '/C=US/ST=California/L=San Francisco/O=Test/CN=server' -passin pass:changeit
+# openssl rsa -in server.key -out server.decrypted.key
+openssl x509 -req -in server.csr -CA rootCA.crt -CAkey rootCA.key -CAcreateserial -days 3650 -sha256 -extfile server.ext -out server.crt  -passin pass:changeit
+openssl pkcs12 -export -out server-keystore.p12 -inkey server.key -in server.crt -certfile rootCA.crt  -passin pass:changeit  -passout pass:changeit
+
+# somehow openssl pkcs12 -export -nokeys doesn't work, it keep putting the cert as PrivateKeyEntry, not trustedCertEntry
+rm truststore.p12
+keytool -importcert -alias ca -file rootCA.crt -keystore truststore.p12 -storepass:file changeit -noprompt
+
+cp truststore.p12 ../client/src/main/resources
+cp client-keystore.p12 ../client/src/main/resources
+cp truststore.p12 ../server/src/main/resources
+cp server-keystore.p12 ../server/src/main/resources
