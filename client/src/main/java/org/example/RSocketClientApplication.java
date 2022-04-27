@@ -16,25 +16,13 @@ import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.retry.Retry;
 
-import javax.net.ssl.CertPathTrustManagerParameters;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertPathBuilder;
-import java.security.cert.CertificateException;
-import java.security.cert.PKIXBuilderParameters;
-import java.security.cert.PKIXRevocationChecker;
-import java.security.cert.X509CertSelector;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 
 import static org.springframework.messaging.rsocket.RSocketRequester.Builder;
