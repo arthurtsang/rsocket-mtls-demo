@@ -88,43 +88,20 @@ public class RSocketClientApplication {
                 .transport(tcpClientTransport);
     }
 
+    @SneakyThrows
     private SslContext getSSLContext() throws IOException {
-        SslContext sslContext = null;
-        try
-        {
-            // truststore
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance("PKIX", "SunJSSE");
-            // initialize certification path checking for the offered certificates and revocation checks against CLRs
-            CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX");
-            PKIXRevocationChecker rc = (PKIXRevocationChecker)cpb.getRevocationChecker();
-            rc.setOptions(EnumSet.of(
-                    //PKIXRevocationChecker.Option.SOFT_FAIL, // won't fail if it can't access the CRL distribution (testing only)
-                    PKIXRevocationChecker.Option.PREFER_CRLS, // prefer CLR over OCSP
-                    PKIXRevocationChecker.Option.ONLY_END_ENTITY,
-                    PKIXRevocationChecker.Option.NO_FALLBACK)); // don't fall back to OCSP checking
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance("PKIX", "SunJSSE");
+        tmf.init( this.getKeystore(trustStoreName, trustStorePassword) );
 
-            PKIXBuilderParameters pkixParams = new PKIXBuilderParameters(this.getKeystore(trustStoreName, trustStorePassword), new X509CertSelector());
-            pkixParams.addCertPathChecker(rc);
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance("PKIX", "SunJSSE");
+        kmf.init(this.getKeystore(keyStoreName, keyStorePassword), keyStorePassword.toCharArray());
 
-            tmf.init( new CertPathTrustManagerParameters(pkixParams) );
-
-            // keystore holding client certificate
-            KeyManagerFactory kmf = KeyManagerFactory.getInstance("PKIX", "SunJSSE");
-            kmf.init(this.getKeystore(keyStoreName, keyStorePassword), keyStorePassword.toCharArray());
-
-            SslContextBuilder builder = SslContextBuilder.forClient().keyManager(kmf).trustManager(tmf); //.ciphers(pfs_ciphers);
-
-            // build context
-            sslContext = builder.build();
-        }
-        catch (NoSuchAlgorithmException | NoSuchProviderException | KeyStoreException | IllegalStateException | UnrecoverableKeyException | CertificateException | InvalidAlgorithmParameterException e)
-        {
-            throw new IOException("Unable to create client TLS context", e);
-        }
-        return sslContext;
+        SslContextBuilder builder = SslContextBuilder.forClient().keyManager(kmf).trustManager(tmf); //.ciphers(pfs_ciphers);
+        return builder.build();
     }
 
-    private KeyStore getKeystore(String filename, String password) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
+    @SneakyThrows
+    private KeyStore getKeystore(String filename, String password) {
         // Load keystore
         InputStream is = ClassLoader.getSystemResourceAsStream(filename);
         KeyStore keystore = KeyStore.getInstance("PKCS12");

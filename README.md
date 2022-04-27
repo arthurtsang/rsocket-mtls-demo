@@ -23,7 +23,7 @@ The `client` module is a simple reactive web server which has 2 endpoints `/requ
 The `client` will add the `client[1|2] cert` to the rsocket SSL context for mTLS.
 It will also add a `JWS` (signed JWT) to the rsocket request metadata.
 
-The `server` model is a rsocket server which has 2 matching message mapping `/request-response` and `/fire-and-forget`.
+The `server` module is a rsocket server which has 2 matching message mapping `/request-response` and `/fire-and-forget`.
 The `client` will call the corresponding message mapping using the interaction model as named.
 To enable revocation checking and CRL distribution point (JSSE disabled both by default), run the server with `-Dcom.sun.security.enableCRLDP=true -Dcom.sun.net.ssl.checkRevocation=true`
 
