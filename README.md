@@ -1,4 +1,4 @@
-# RSocket Demo with mTLS and CRL
+# RSocket Demo with mTLS, CRL, JWS, and protobuf
 
 I've put together a little demo on how to setup mTLS (clientAuth) with RSocket/Spring Boot and turn on CRL.
 
