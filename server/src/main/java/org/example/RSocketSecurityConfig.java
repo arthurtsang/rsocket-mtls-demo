@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity;
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity;
 import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver;
+import org.springframework.security.messaging.handler.invocation.reactive.CurrentSecurityContextArgumentResolver;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
@@ -41,6 +42,7 @@ public class RSocketSecurityConfig {
     RSocketMessageHandler messageHandler(RSocketStrategies strategies) {
         RSocketMessageHandler handler = new RSocketMessageHandler();
         handler.getArgumentResolverConfigurer().addCustomResolver(new AuthenticationPrincipalArgumentResolver());
+        handler.getArgumentResolverConfigurer().addCustomResolver(new CurrentSecurityContextArgumentResolver());
         handler.setRSocketStrategies(strategies);
         return handler;
     }

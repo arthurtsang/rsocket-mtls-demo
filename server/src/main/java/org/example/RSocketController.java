@@ -6,6 +6,8 @@ import org.example.SharedKernel.Location;
 import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.annotation.CurrentSecurityContext;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.jwt.JwtClaimAccessor;
 import org.springframework.stereotype.Controller;
 import reactor.core.publisher.Mono;
@@ -26,10 +28,11 @@ public class RSocketController {
      */
     @SneakyThrows
     @MessageMapping("request-response")
-    Mono<Location> requestResponse(Location request, @Headers Map<String, Object> metadata, @AuthenticationPrincipal JwtClaimAccessor user ) {
+    Mono<Location> requestResponse(Location request, @Headers Map<String, Object> metadata, @AuthenticationPrincipal JwtClaimAccessor user, @CurrentSecurityContext SecurityContext securityContext) {
         log.info("Received request-response request: {}", request);
         log.info("Received request-response header: {}", metadata);
         log.info("Received request-response user details: {} {}", user.getSubject(), user.getClaim("scope"));
+        log.info("Received request-response security context {} {}", securityContext.getAuthentication().getName(), securityContext.getAuthentication().getAuthorities());
         return Mono.just(Location.newBuilder().setLocation("s3://newbucket/newfile\n").build());
     }
 
