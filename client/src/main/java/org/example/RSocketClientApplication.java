@@ -43,13 +43,13 @@ public class RSocketClientApplication {
     }
 
     @Bean
-    ProtoFluxSinkConsumer protoFluxSink() {
-        return new ProtoFluxSinkConsumer();
+    CloudEventFluxSinkConsumer protoFluxSink() {
+        return new CloudEventFluxSinkConsumer();
     }
 
     @Bean
-    CloudEventHandler cloudEventHandler(ProtoFluxSinkConsumer protoFluxSinkConsumer) {
-        return new CloudEventHandler(protoFluxSinkConsumer);
+    CloudEventHandler cloudEventHandler(CloudEventFluxSinkConsumer cloudEventFluxSinkConsumer) {
+        return new CloudEventHandler(cloudEventFluxSinkConsumer);
     }
 
     @Bean

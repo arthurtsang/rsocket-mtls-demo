@@ -60,6 +60,6 @@ public class RSocketClientController {
                 .setSource("http://localhost:7001/handler")
                 .setProtoData(Any.pack(location))
                 .build();
-        cloudEventHandler.handle(Any.pack(cloudEvent));
+        cloudEventHandler.handle(cloudEvent);
     }
 }

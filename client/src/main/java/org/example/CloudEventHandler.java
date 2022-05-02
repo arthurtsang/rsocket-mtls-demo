@@ -15,11 +15,10 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 public class CloudEventHandler {
-    private final ProtoFluxSinkConsumer protoFluxSinkConsumer;
+    private final CloudEventFluxSinkConsumer cloudEventFluxSinkConsumer;
 
     @SneakyThrows
-    public void handle(Any protoEvent) {
-        CloudEvent cloudEvent = protoEvent.unpack(CloudEvent.class);
+    public void handle(CloudEvent cloudEvent) {
         log.info( "handler received: {}", cloudEvent );
         Thread.sleep(1000);
         String id = UUID.randomUUID().toString();
@@ -31,6 +30,6 @@ public class CloudEventHandler {
                 .setProtoData(Any.pack(newLocatioin))
                 .build();
         log.info( "sending new location {}", outEvent );
-        protoFluxSinkConsumer.publishProtoAny(Any.pack(outEvent));
+        cloudEventFluxSinkConsumer.publish(outEvent);
     }
 }

@@ -53,7 +53,7 @@ public class RSocketController {
 
 
     @MessageMapping("channel")
-    Flux<Any> channel(Flux<Any> cloudEventFlux, @AuthenticationPrincipal JwtClaimAccessor user) {
+    Flux<CloudEvent> channel(Flux<CloudEvent> cloudEventFlux, @AuthenticationPrincipal JwtClaimAccessor user) {
         String queueName = user.getSubject();
         String jmsRoutingKey = user.getAudience().get(0);
         log.info( "established connection with {} to {}", queueName, jmsRoutingKey);
@@ -61,9 +61,8 @@ public class RSocketController {
                 .doOnError(e->log.error("channel error: " + e.getMessage(), e))
                 .doOnCancel(()->log.info("channel cancelled"))
                 .doAfterTerminate(()->log.info("connection terminated"))
-                .subscribe( event -> {
+                .subscribe( cloudEvent -> {
                     try {
-                        CloudEvent cloudEvent = event.unpack(CloudEvent.class);
                         Location location = cloudEvent.getProtoData().unpack(Location.class);
                         log.info("received cloud event {}" + cloudEvent);
                         rabbitTemplate.convertAndSend(jmsRoutingKey, location.getLocation() );

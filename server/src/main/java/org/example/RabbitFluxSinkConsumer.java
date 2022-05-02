@@ -15,10 +15,9 @@ import java.util.function.Consumer;
  * A consumer fluxsink where a JMS queue is publishing data to
  */
 @Slf4j
-public class RabbitFluxSinkConsumer implements Consumer<FluxSink<Any>>, Closeable {
+public class RabbitFluxSinkConsumer implements Consumer<FluxSink<CloudEvent>>, Closeable {
     private final SimpleMessageListenerContainer simpleMessageListenerContainer;
-    private FluxSink<Any> anyFluxSink;
-
+    private FluxSink<CloudEvent> cloudEventFluxSink;
     /**
      * Listen to a queue (queueName) and pass the content as SharedKernal.Location CloudEvent to the fluxsink
      * @param queueName
@@ -29,7 +28,7 @@ public class RabbitFluxSinkConsumer implements Consumer<FluxSink<Any>>, Closeabl
             try {
                 String location = new String(message.getBody());
                 log.info( "received message from rabbit {}", location );
-                if( anyFluxSink != null ) {
+                if( cloudEventFluxSink != null ) {
                     SharedKernel.Location newLocation = SharedKernel.Location.newBuilder().setLocation(location).build();
                     CloudEvent cloudEvent = CloudEvent.newBuilder()
                             .setId(UUID.randomUUID().toString())
@@ -37,7 +36,7 @@ public class RabbitFluxSinkConsumer implements Consumer<FluxSink<Any>>, Closeabl
                             .setSource("http://localhost:3000/channel")
                             .setProtoData(Any.pack(newLocation))
                             .build();
-                    anyFluxSink.next(Any.pack(cloudEvent));
+                    cloudEventFluxSink.next(cloudEvent);
                 }
             } catch (Exception e) {
                 log.error("jms flux sink error: " + e.getMessage(), e);
@@ -46,8 +45,8 @@ public class RabbitFluxSinkConsumer implements Consumer<FluxSink<Any>>, Closeabl
     }
 
     @Override
-    public void accept(FluxSink<Any> anyFluxSink) {
-        this.anyFluxSink = anyFluxSink;
+    public void accept(FluxSink<CloudEvent> cloudEventFluxSink) {
+        this.cloudEventFluxSink = cloudEventFluxSink;
     }
 
     @Override

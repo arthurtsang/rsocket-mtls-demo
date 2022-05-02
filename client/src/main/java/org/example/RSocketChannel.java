@@ -1,6 +1,7 @@
 package org.example;
 
 import com.google.protobuf.Any;
+import io.cloudevents.v1.proto.CloudEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -23,7 +24,7 @@ public class RSocketChannel implements ApplicationListener<ContextRefreshedEvent
     @Autowired
     JwtFactory jwtFactory;
     @Autowired
-    ProtoFluxSinkConsumer protoFluxSinkConsumer;
+    CloudEventFluxSinkConsumer cloudEventFluxSinkConsumer;
     @Autowired
     CloudEventHandler cloudEventHandler;
 
@@ -31,8 +32,8 @@ public class RSocketChannel implements ApplicationListener<ContextRefreshedEvent
     public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
         requester.route("channel")
                 .metadata(jwtFactory.getJWT(), MimeType.valueOf("message/x.rsocket.authentication.bearer.v0"))
-                .data(Flux.create(protoFluxSinkConsumer))
-                .retrieveFlux(Any.class)
+                .data(Flux.create(cloudEventFluxSinkConsumer))
+                .retrieveFlux(CloudEvent.class)
                 .doOnError(e->log.error("channel error: " + e.getMessage(), e))
                 .doAfterTerminate(()->log.info("connection terminated"))
                 .subscribe(cloudEventHandler::handle);
