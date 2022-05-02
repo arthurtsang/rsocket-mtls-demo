@@ -1,4 +1,6 @@
-# RSocket Demo with mTLS, CRL, JWS, and protobuf
+# RSocket Demo with mTLS, CRL, JWS, Cloudevents, protobuf and RabbitMQ backend
+
+## RSocket with mTLS and JWT authentication
 
 I've put together a little demo on how to setup mTLS (clientAuth) with RSocket/Spring Boot and turn on CRL.
 
@@ -36,3 +38,23 @@ s3://newbucket/newfile
 arthur@Arthur:~/rsocket$ curl http://localhost:7002/request-response
 {"timestamp":"2022-04-27T22:13:01.911+00:00","path":"/request-response","status":500,"error":"Internal Server Error","requestId":"831f1a23-1"}
 ```
+
+## RSocket channel with CloudEvents (over protobuf) and RabbitMQ eventbus
+
+I've adding a RSocket channel implementation between the `client` and `server`.  
+The `client` will set up the RSocket channel to the `server` upon startup (however, the connection didn't establish right away, even though the resulting Flux is subscribed).
+A new component `CloudEventHandler` is added to mock handling cloud events (commands) from the server and post a cloud event back to the server to mimic the process completion event.
+
+The `server` has a new `channel` rsocket endpoint which would post the cloud event from the incoming flux to a rabbit queue (the name of the queue would be the audience field of the jwt token which would better to be a field in the cloud event instead).
+It will also listen to a queue with the same name as the subject in the JWT and return the Flux to the queue as the rsocket endpoint returns.
+
+### Scenario
+
+* Client 1 connects to Server 1 over RSocket Channel
+* Server 1 listens to Rabbit queue named Client 1
+* Client 2 connects to Server 2 over Rsocket Channel
+* Server 2 listens to Rabbit queue named Client 2
+* Client 1 sends a cloud event to Server 1 with the audience in the JWT as Client 2
+* Server 1 put the cloud event to the Rabbit queue Client 2
+* Server 2 picks up the cloud event and send it to Client 2 through RSocket Channel
+* Client 2 procecss the cloud event with the Cloud Event Handler and post a result cloud event to another recipient.
