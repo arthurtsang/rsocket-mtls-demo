@@ -20,6 +20,7 @@ public class RSocketApplication {
 
     /**
      * to enable protobuf
+     *
      * @return RSocketStrategiesCustomizer
      */
     @Bean
@@ -29,4 +30,5 @@ public class RSocketApplication {
             strategy.encoder(new ProtobufEncoder());
         };
     }
+
 }

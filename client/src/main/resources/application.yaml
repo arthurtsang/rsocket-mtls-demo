@@ -13,12 +13,15 @@ rsocket:
   remote:
     port: 3000
     host: localhost
+  jwt:
+    audience: client2
+    subject: client1
   ssl:
     server:
-      trustStoreFileName: truststore.p12
+      trustStoreName: truststore.p12
       trustStorePassword: changeit
     client:
-      keyStoreFileName: client-keystore.p12
+      keyStoreName: client-keystore.p12
       keyStorePassword: changeit
 
 ---
@@ -32,10 +35,13 @@ rsocket:
   remote:
     port: 3000
     host: localhost
+  jwt:
+    audience: client1
+    subject: client2
   ssl:
     server:
-      trustStoreFileName: truststore.p12
+      trustStoreName: truststore.p12
       trustStorePassword: changeit
     client:
-      keyStoreFileName: client2-keystore.p12
+      keyStoreName: client2-keystore.p12
       keyStorePassword: changeit

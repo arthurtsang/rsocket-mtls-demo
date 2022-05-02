@@ -10,6 +10,11 @@ spring:
         key-store-password: "changeit"
         trust-store: "classpath:truststore.p12"
         trust-store-password: "changeit"
+  rabbitmq:
+    host: localhost
+    port: 5672
+    uesrname: guest
+    password: guest
   main:
     lazy-initialization: true
 logging:
@@ -18,5 +23,6 @@ logging:
       tcp:
         SslProvider: debug
         ssl: debug
-
+debug:
+  true
 

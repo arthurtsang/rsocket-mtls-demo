@@ -1,8 +1,12 @@
 package org.example;
 
+import com.google.protobuf.Any;
+import io.cloudevents.v1.proto.CloudEvent;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.example.SharedKernel.Location;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -10,6 +14,7 @@ import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.jwt.JwtClaimAccessor;
 import org.springframework.stereotype.Controller;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
@@ -17,6 +22,10 @@ import java.util.Map;
 @Slf4j
 @Controller
 public class RSocketController {
+
+    @Autowired
+    SimpleMessageListenerContainerFactory simpleMessageListenerContainerFactory;
+    @Autowired RabbitTemplate rabbitTemplate;
 
     /**
      * A sample request-response to read the request data (Location), the request metadata (annotated with @Header) and the principle object (annotated with @AuthenticationPrinciple)
@@ -41,4 +50,28 @@ public class RSocketController {
         log.info( "location received is " + request.getLocation() );
         return Mono.never();
     }
+
+
+    @MessageMapping("channel")
+    Flux<Any> channel(Flux<Any> cloudEventFlux, @AuthenticationPrincipal JwtClaimAccessor user) {
+        String queueName = user.getSubject();
+        String jmsRoutingKey = user.getAudience().get(0);
+        log.info( "established connection with {} to {}", queueName, jmsRoutingKey);
+        cloudEventFlux
+                .doOnError(e->log.error("channel error: " + e.getMessage(), e))
+                .doOnCancel(()->log.info("channel cancelled"))
+                .doAfterTerminate(()->log.info("connection terminated"))
+                .subscribe( event -> {
+                    try {
+                        CloudEvent cloudEvent = event.unpack(CloudEvent.class);
+                        Location location = cloudEvent.getProtoData().unpack(Location.class);
+                        log.info("received cloud event {}" + cloudEvent);
+                        rabbitTemplate.convertAndSend(jmsRoutingKey, location.getLocation() );
+                    }catch ( Exception e ) {
+                        log.error( "error reading channel " + e.getMessage(), e);
+                    }
+                });
+        return Flux.create(new RabbitFluxSinkConsumer(queueName, simpleMessageListenerContainerFactory));
+    }
+
 }
