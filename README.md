@@ -58,3 +58,8 @@ It will also listen to a queue with the same name as the subject in the JWT and 
 * Server 1 put the cloud event to the Rabbit queue Client 2
 * Server 2 picks up the cloud event and send it to Client 2 through RSocket Channel
 * Client 2 procecss the cloud event with the Cloud Event Handler and post a result cloud event to another recipient.
+
+
+### TODO
+
+* FluxSinkConsumer cannot be a bean.  when more than one clients connected to the server, they need to have different instance of FluxSinkConsumer, one for each of the Flux instance.  need to implement a Factory and Registry so the correct one can be fetched to send to the correct client.
