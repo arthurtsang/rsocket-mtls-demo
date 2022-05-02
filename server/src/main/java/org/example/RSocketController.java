@@ -17,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
 import java.util.Map;
 
 @Slf4j
@@ -57,10 +58,18 @@ public class RSocketController {
         String queueName = user.getSubject();
         String jmsRoutingKey = user.getAudience().get(0);
         log.info( "established connection with {} to {}", queueName, jmsRoutingKey);
+        RabbitFluxSinkConsumer rabbitFluxSinkConsumer = new RabbitFluxSinkConsumer(queueName, simpleMessageListenerContainerFactory);
         cloudEventFlux
                 .doOnError(e->log.error("channel error: " + e.getMessage(), e))
                 .doOnCancel(()->log.info("channel cancelled"))
-                .doAfterTerminate(()->log.info("connection terminated"))
+                .doAfterTerminate(()->{
+                    log.info("connection terminated");
+                    try {
+                        rabbitFluxSinkConsumer.close();
+                    } catch (IOException e) {
+                        log.error("failed closing rabbit listen when rsocket channel terminated\n" + e.getMessage(), e);
+                    }
+                })
                 .subscribe( cloudEvent -> {
                     try {
                         Location location = cloudEvent.getProtoData().unpack(Location.class);
@@ -70,7 +79,7 @@ public class RSocketController {
                         log.error( "error reading channel " + e.getMessage(), e);
                     }
                 });
-        return Flux.create(new RabbitFluxSinkConsumer(queueName, simpleMessageListenerContainerFactory));
+        return Flux.create(rabbitFluxSinkConsumer);
     }
 
 }

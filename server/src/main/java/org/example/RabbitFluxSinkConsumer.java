@@ -37,7 +37,8 @@ public class RabbitFluxSinkConsumer implements Consumer<FluxSink<CloudEvent>>, C
                             .setProtoData(Any.pack(newLocation))
                             .build();
                     cloudEventFluxSink.next(cloudEvent);
-                }
+                } else
+                    log.error( "cloudEventFluxSink is null");
             } catch (Exception e) {
                 log.error("jms flux sink error: " + e.getMessage(), e);
             }
