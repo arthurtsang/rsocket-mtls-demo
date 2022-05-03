@@ -10,12 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.messaging.rsocket.RSocketRequester;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MimeType;
 import reactor.core.publisher.Flux;
 
 import java.time.Clock;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * setup a rsocket channel with the server
@@ -24,15 +26,22 @@ import java.util.UUID;
  */
 @Component
 @Slf4j
-public class RSocketChannel implements ApplicationListener<ContextRefreshedEvent> {
+public class RSocketChannel {
     @Autowired RSocketRequester requester;
     @Autowired JwtFactory jwtFactory;
     @Autowired CloudEventFluxSinkConsumer cloudEventFluxSinkConsumer;
     @Autowired CloudEventHandler cloudEventHandler;
     @Autowired RSocketClientConfiguration config;
+    private AtomicBoolean connectedToServer = new AtomicBoolean(false);
 
-    @Override
-    public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
+    @Scheduled(fixedDelay = 3000)
+    public void connectToServerIfNotConnected() {
+        if( !connectedToServer.get() ) {
+            connectToServer();
+        }
+    }
+
+    private void connectToServer() {
         CloudEvent init = CloudEvent.newBuilder()
                 .setId(UUID.randomUUID().toString())
                 .setSource("tcp://"+config.jwt.subject)
@@ -45,12 +54,18 @@ public class RSocketChannel implements ApplicationListener<ContextRefreshedEvent
                                 ).build()
                         ).build())
                 .build();
+        log.info( "Connecting to server with\n{}" + init);
+        connectedToServer.set(true);
         requester.route("channel")
                 .metadata(jwtFactory.getJWT(), MimeType.valueOf("message/x.rsocket.authentication.bearer.v0"))
                 .data(Flux.create(cloudEventFluxSinkConsumer).startWith(init))
                 .retrieveFlux(CloudEvent.class)
                 .doOnError(e->log.error("channel error: " + e.getMessage(), e))
-                .doAfterTerminate(()->log.info("connection terminated"))
+                .doOnComplete(()->log.info("connection completed"))
+                .doAfterTerminate(() -> {
+                    log.info("connection terminated");
+                    connectedToServer.set(false);
+                })
                 .subscribe(cloudEventHandler::handle);
     }
 }
